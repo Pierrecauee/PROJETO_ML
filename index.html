@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Cloudenix - IDS System</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .painel { background-color: #161b22; padding: 30px; border: 1px solid #30363d; border-radius: 10px; width: 400px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        h1 { text-align: center; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
+        .campo { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background-color: #238636; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #2ea043; }
+        .resultado { margin-top: 20px; padding: 15px; text-align: center; border-radius: 5px; font-weight: bold; font-size: 18px; }
+    </style>
+</head>
+<body>
+
+<div id="app" class="painel">
+    <h1>🛡️ CLOUDENIX IDS</h1>
+    
+    <div class="campo">
+        <label>Porta de Destino:</label>
+        <input type="number" v-model="porta" placeholder="Ex: 80, 22, 443">
+    </div>
+
+    <div class="campo">
+        <label>Tamanho do Pacote (Bytes):</label>
+        <input type="number" v-model="tamanho" placeholder="Ex: 500, 1200">
+    </div>
+
+    <div class="campo">
+        <label>Protocolo:</label>
+        <select v-model="protocolo">
+            <option value="0">TCP</option>
+            <option value="1">UDP/HTTP</option>
+            <option value="2">DNS</option>
+        </select>
+    </div>
+
+    <button @click="analisarTrafego">ANALISAR PACOTE</button>
+
+    <div v-if="resultado" class="resultado" :style="{ backgroundColor: corFundo, border: '2px solid ' + corBorda }">
+        {{ resultado }}
+        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Confiança: {{ confianca }}</div>
+    </div>
+</div>
+
+<script>
+    const { createApp } = Vue
+
+    createApp({
+        data() {
+            return {
+                porta: 80,
+                tamanho: 500,
+                protocolo: '1',
+                resultado: null,
+                confianca: '',
+                corFundo: '',
+                corBorda: ''
+            }
+        },
+        methods: {
+            async analisarTrafego() {
+                this.resultado = "Processando..."
+                this.corFundo = "#30363d"
+                
+                const dados = {
+                    porta: parseInt(this.porta),
+                    tamanho_pacote: parseInt(this.tamanho),
+                    protocolo: parseInt(this.protocolo)
+                }
+
+                try {
+                    const resposta = await fetch('http://127.0.0.1:5000/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(dados)
+                    });
+                    
+                    const json = await resposta.json();
+                    
+                    this.resultado = json.mensagem;
+                    this.confianca = json.confianca;
+                    
+                    if (json.cor === 'red') {
+                        this.corFundo = 'rgba(255, 0, 0, 0.2)';
+                        this.corBorda = 'red';
+                    } else {
+                        this.corFundo = 'rgba(0, 255, 0, 0.2)';
+                        this.corBorda = 'green';
+                    }
+                } catch (erro) {
+                    this.resultado = "Erro de Conexão com API";
+                    this.corFundo = "orange";
+                }
+            }
+        }
+    }).mount('#app')
+</script>
+
+</body>
+</html>
