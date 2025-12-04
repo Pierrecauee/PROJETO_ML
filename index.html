@@ -2,18 +2,75 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Cloudenix - IDS System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudenix - Sistema IDS</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        body { background-color: #0d1117; color: #c9d1d9; font-family: 'Courier New', monospace; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .painel { background-color: #161b22; padding: 30px; border: 1px solid #30363d; border-radius: 10px; width: 400px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        h1 { text-align: center; color: #58a6ff; border-bottom: 1px solid #30363d; padding-bottom: 10px; }
-        .campo { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; background: #0d1117; border: 1px solid #30363d; color: white; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 15px; background-color: #238636; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+        body { 
+            background-color: #0d1117; 
+            color: #c9d1d9; 
+            font-family: 'Segoe UI', 'Courier New', monospace; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            margin: 0; 
+        }
+        .painel { 
+            background-color: #161b22; 
+            padding: 30px; 
+            border: 1px solid #30363d; 
+            border-radius: 10px; 
+            width: 90%; 
+            max-width: 450px; 
+            box-shadow: 0 0 30px rgba(0,0,0,0.5); 
+        }
+        h1 { 
+            text-align: center; 
+            color: #58a6ff; 
+            border-bottom: 1px solid #30363d; 
+            padding-bottom: 15px; 
+            margin-top: 0;
+            font-size: 24px;
+        }
+        .campo { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; color: #8b949e; }
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            background: #0d1117; 
+            border: 1px solid #30363d; 
+            color: white; 
+            border-radius: 6px; 
+            box-sizing: border-box; 
+            font-size: 16px;
+        }
+        input:focus, select:focus { outline: 2px solid #1f6feb; border-color: transparent; }
+        button { 
+            width: 100%; 
+            padding: 15px; 
+            background-color: #238636; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            font-weight: bold; 
+            transition: 0.2s;
+        }
         button:hover { background-color: #2ea043; }
-        .resultado { margin-top: 20px; padding: 15px; text-align: center; border-radius: 5px; font-weight: bold; font-size: 18px; }
+        button:disabled { background-color: #30363d; cursor: not-allowed; }
+        
+        .resultado { 
+            margin-top: 25px; 
+            padding: 20px; 
+            text-align: center; 
+            border-radius: 8px; 
+            font-weight: bold; 
+            font-size: 20px; 
+            animation: fadeIn 0.5s;
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -22,17 +79,17 @@
     <h1>🛡️ CLOUDENIX IDS</h1>
     
     <div class="campo">
-        <label>Porta de Destino:</label>
+        <label>Porta de Destino</label>
         <input type="number" v-model="porta" placeholder="Ex: 80, 22, 443">
     </div>
 
     <div class="campo">
-        <label>Tamanho do Pacote (Bytes):</label>
+        <label>Tamanho do Pacote (Bytes)</label>
         <input type="number" v-model="tamanho" placeholder="Ex: 500, 1200">
     </div>
 
     <div class="campo">
-        <label>Protocolo:</label>
+        <label>Protocolo</label>
         <select v-model="protocolo">
             <option value="0">TCP</option>
             <option value="1">UDP/HTTP</option>
@@ -40,11 +97,15 @@
         </select>
     </div>
 
-    <button @click="analisarTrafego">ANALISAR PACOTE</button>
+    <button @click="analisarTrafego" :disabled="loading">
+        {{ loading ? 'PROCESSANDO...' : 'ANALISAR TRÁFEGO' }}
+    </button>
 
-    <div v-if="resultado" class="resultado" :style="{ backgroundColor: corFundo, border: '2px solid ' + corBorda }">
+    <div v-if="resultado" class="resultado" :style="{ backgroundColor: corFundo, border: '2px solid ' + corBorda, color: corTexto }">
         {{ resultado }}
-        <div style="font-size: 12px; margin-top: 5px; opacity: 0.8;">Confiança: {{ confianca }}</div>
+        <div style="font-size: 14px; margin-top: 8px; opacity: 0.9; font-weight: normal;">
+            Confiança da IA: {{ confianca }}
+        </div>
     </div>
 </div>
 
@@ -60,14 +121,17 @@
                 resultado: null,
                 confianca: '',
                 corFundo: '',
-                corBorda: ''
+                corBorda: '',
+                corTexto: '',
+                loading: false
             }
         },
         methods: {
             async analisarTrafego() {
-                this.resultado = "Processando..."
-                this.corFundo = "#30363d"
+                this.loading = true;
+                this.resultado = null;
                 
+                // Dados para enviar
                 const dados = {
                     porta: parseInt(this.porta),
                     tamanho_pacote: parseInt(this.tamanho),
@@ -75,27 +139,41 @@
                 }
 
                 try {
-                    const resposta = await fetch('http://127.0.0.1:5000/predict', {
+                   
+                    const urlApi = 'https://clouenix.azurewebsites.net/predict';
+                    
+                    const resposta = await fetch(urlApi, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(dados)
                     });
                     
+                    if (!resposta.ok) throw new Error("Erro na API");
+
                     const json = await resposta.json();
                     
                     this.resultado = json.mensagem;
                     this.confianca = json.confianca;
                     
+                    // Configura as cores baseado na resposta
                     if (json.cor === 'red') {
-                        this.corFundo = 'rgba(255, 0, 0, 0.2)';
-                        this.corBorda = 'red';
+                        this.corFundo = 'rgba(255, 50, 50, 0.15)';
+                        this.corBorda = '#ff6b6b';
+                        this.corTexto = '#ff6b6b';
                     } else {
-                        this.corFundo = 'rgba(0, 255, 0, 0.2)';
-                        this.corBorda = 'green';
+                        this.corFundo = 'rgba(50, 255, 100, 0.15)';
+                        this.corBorda = '#2ea043';
+                        this.corTexto = '#3fb950';
                     }
                 } catch (erro) {
-                    this.resultado = "Erro de Conexão com API";
-                    this.corFundo = "orange";
+                    console.error(erro);
+                    this.resultado = "Erro de Conexão com o Servidor";
+                    this.corFundo = 'rgba(255, 165, 0, 0.15)';
+                    this.corBorda = 'orange';
+                    this.corTexto = 'orange';
+                    this.confianca = "Verifique se a API Azure está rodando";
+                } finally {
+                    this.loading = false;
                 }
             }
         }
